@@ -1,0 +1,121 @@
+def info_to_df(segment_info):
+    return pd.DataFrame({"name": [x["name"] for x in segment_info]})
+
+
+def extract_names_from_table(table_value):
+    if table_value is None:
+        names = []
+    elif isinstance(table_value, pd.DataFrame):
+        names = table_value.iloc[:, 0].tolist()
+    else:
+        names = [row[0] for row in table_value if row]
+
+    cleaned = []
+    for x in names:
+        if x is None:
+            continue
+        x = str(x).strip()
+        if not x:
+            continue
+        if x not in cleaned:
+            cleaned.append(x)
+
+    if "door" in cleaned:
+        cleaned.remove("door")
+    cleaned = ["door"] + cleaned
+    return cleaned
+
+
+def rebuild_segment_info(names, prev_segment_info):
+    prev_map = {item["name"]: copy.deepcopy(item) for item in prev_segment_info}
+    used_ids = {item["id"] for item in prev_segment_info}
+
+    next_id = 0
+    new_info = []
+
+    for name in names:
+        if name in prev_map:
+            item = copy.deepcopy(prev_map[name])
+        else:
+            while next_id in used_ids:
+                next_id += 1
+            item = {
+                "color": CUSTOM_COLOR["gray"],
+                "id": next_id,
+                "isthing": 1,
+                "name": name,
+            }
+            used_ids.add(next_id)
+
+        new_info.append(item)
+
+    return new_info
+
+
+def sync_ui(table_value, selected_target2, segment_info_state):
+    names = extract_names_from_table(table_value)
+    updated_info = rebuild_segment_info(names, segment_info_state)
+
+    df = info_to_df(updated_info)
+
+    target2_choices = [x["name"] for x in updated_info if x["name"] != "door"]
+    if selected_target2 not in target2_choices:
+        selected_target2 = target2_choices[0] if target2_choices else None
+
+    return (
+        df,
+        gr.update(choices=target2_choices, value=selected_target2),
+        updated_info,
+        updated_info,
+    )
+
+
+initial_df = info_to_df(CUSTOM_SEGMENTS_INFO)
+initial_target2_choices = [x["name"] for x in CUSTOM_SEGMENTS_INFO if x["name"] != "door"]
+initial_target2 = initial_target2_choices[0] if initial_target2_choices else None
+
+
+with gr.Blocks() as demo:
+    gr.Markdown("## Segment Editor")
+
+    segment_info_state = gr.State(copy.deepcopy(CUSTOM_SEGMENTS_INFO))
+
+    with gr.Row():
+        with gr.Column(scale=3):
+            segment_table = gr.Dataframe(
+                value=initial_df,
+                headers=["name"],
+                datatype=["str"],
+                row_count=(len(initial_df), "dynamic"),   # 행 추가/삭제 가능
+                col_count=(1, "fixed"),
+                interactive=True,
+                label="Segment Names",
+            )
+
+        with gr.Column(scale=2):
+            main_target_1 = gr.Dropdown(
+                choices=["door"],
+                value="door",
+                interactive=False,
+                label="Main Target 1 (fixed)",
+            )
+
+            main_target_2 = gr.Dropdown(
+                choices=initial_target2_choices,
+                value=initial_target2,
+                interactive=True,
+                label="Main Target 2",
+            )
+
+    current_segment_info = gr.JSON(
+        label="Current segment_info",
+        value=CUSTOM_SEGMENTS_INFO,
+    )
+
+    segment_table.change(
+        fn=sync_ui,
+        inputs=[segment_table, main_target_2, segment_info_state],
+        outputs=[segment_table, main_target_2, segment_info_state, current_segment_info],
+    )
+
+demo.launch()
