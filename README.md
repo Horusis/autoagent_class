@@ -52,7 +52,7 @@ gradio run_overall.py
 실행된 gradio 에 준비하신 custom image 를 드레그로 입력하시면 됩니다
 
 Acknowledgments
-본 프로젝트는 서강대학교(또는 소속 대학) AIC6056 자율에이전트시각표현학습(AAVRL) 수업의 일환으로 진행되었습니다.
+본 프로젝트는 한양대학교 대학원 AIC6056 자율에이전트시각표현학습(AAVRL) 수업의 일환으로 진행되었습니다.
 
 References: 
 * SAM 2: Segment Anything in Images and Videos
